@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arithmetic Flash Cards</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+    }
+    .quiz-card {
+      background-color: #1c1c1c;
+      border-radius: 1rem;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+      text-align: center;
+    }
+    .question {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    #feedback {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      min-height: 2rem;
+    }
+    .score-box {
+      display: flex;
+      justify-content: space-around;
+      border: 2px solid white;
+      padding: 1rem;
+      margin-top: 1rem;
+      font-size: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <h1 class="text-center">Arithmetic Flash Cards Quiz</h1>
+    
+    <!-- Menu Section -->
+    <div id="menu" class="quiz-card mt-4">
+      <div class="text-center">
+        <button class="btn btn-primary m-1" onclick="startQuiz('Addition')">Addition</button>
+        <button class="btn btn-primary m-1" onclick="startQuiz('Subtraction')">Subtraction</button>
+        <button class="btn btn-primary m-1" onclick="startQuiz('Multiplication')">Multiplication</button>
+        <button class="btn btn-primary m-1" onclick="startQuiz('Division')">Division</button>
+      </div>
+    </div>
+    
+    <!-- Quiz Section -->
+    <div id="quiz" class="quiz-card mt-4" style="display: none">
+      <div class="question" id="questionBox"></div>
+      <div id="feedback"></div>
+      <input id="answer" type="text" class="form-control mb-3" placeholder="Your Answer">
+      <div class="d-grid gap-2">
+        <button class="btn btn-success" onclick="submitAnswer()">Submit</button>
+        <button class="btn btn-secondary" onclick="passQuestion()">Pass</button>
+        <button class="btn btn-danger" onclick="finishEarly()">Finish Early</button>
+        <button class="btn btn-warning" id="voiceInputBtn" onclick="toggleVoiceInput()">Voice Input: OFF</button>
+      </div>
+      
+      <div class="score-box">
+        <p>+ <span id="addScore">0</span>/200</p>
+        <p>- <span id="subScore">0</span>/200</p>
+        <p>/ <span id="divScore">0</span>/200</p>
+        <p>* <span id="mulScore">0</span>/200</p>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Score tracking for each subject
+    let scores = { 'Addition': 0, 'Subtraction': 0, 'Multiplication': 0, 'Division': 0 };
+    let currentSubject = '';
+    let voiceListeningEnabled = false;
+    let recognition = null;
+    
+    // Set up speech recognition if supported
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      
+      recognition.onresult = function(event) {
+        const transcript = event.results[event.results.length - 1][0].transcript.trim();
+        document.getElementById('answer').value = transcript;
+        submitAnswer();
+      };
+      
+      recognition.onerror = function(event) {
+        console.error("Speech recognition error:", event.error);
+      };
+      
+      recognition.onend = function() {
+        if (voiceListeningEnabled) {
+          setTimeout(() => recognition.start(), 500);
+        }
+      };
+    }
+    
+    // Start the quiz for the selected subject
+    function startQuiz(subject) {
+      currentSubject = subject;
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('quiz').style.display = 'block';
+      nextQuestion();
+      if (voiceListeningEnabled && recognition) recognition.start();
+    }
+    
+    // Generate a new arithmetic question based on the current subject
+    function nextQuestion() {
+      let a, b;
+      if (currentSubject === 'Addition') {
+        a = Math.floor(Math.random() * 20) + 1;
+        b = Math.floor(Math.random() * 20) + 1;
+      } else if (currentSubject === 'Subtraction') {
+        a = Math.floor(Math.random() * 20) + 1;
+        b = Math.floor(Math.random() * a) + 1;
+      } else if (currentSubject === 'Multiplication') {
+        a = Math.floor(Math.random() * 12) + 1;
+        b = Math.floor(Math.random() * 12) + 1;
+      } else if (currentSubject === 'Division') {
+        // For division, choose a divisor and then choose a multiplier so that dividend is whole
+        b = Math.floor(Math.random() * 12) + 1;
+        a = b * (Math.floor(Math.random() * 12) + 1);
+      }
+      let operator = currentSubject === 'Addition' ? '+' :
+                     currentSubject === 'Subtraction' ? '−' :
+                     currentSubject === 'Multiplication' ? '×' : '÷';
+      document.getElementById('questionBox').textContent = `${a} ${operator} ${b}`;
+      document.getElementById('answer').value = '';
+      document.getElementById('answer').focus();
+    }
+    
+    // When the user submits an answer, update the score and present the next question
+    function submitAnswer() {
+      // For sake of keeping it simple, each submission increments the subject's score.
+      scores[currentSubject]++;
+      
+      // Update score display for the current subject
+      let scoreId = '';
+      if (currentSubject === 'Addition') scoreId = 'addScore';
+      else if (currentSubject === 'Subtraction') scoreId = 'subScore';
+      else if (currentSubject === 'Multiplication') scoreId = 'mulScore';
+      else if (currentSubject === 'Division') scoreId = 'divScore';
+      
+      document.getElementById(scoreId).textContent = scores[currentSubject];
+      nextQuestion();
+    }
+    
+    function passQuestion() {
+      nextQuestion();
+    }
+    
+    // Finish the quiz and return to the menu
+    function finishEarly() {
+      document.getElementById('quiz').style.display = 'none';
+      document.getElementById('menu').style.display = 'block';
+      if (voiceListeningEnabled && recognition) recognition.stop();
+    }
